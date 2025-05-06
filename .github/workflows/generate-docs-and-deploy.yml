@@ -43,6 +43,9 @@ jobs:
     - name: ⬇️ Install nocco
       run: dotnet tool install --global nocco --version 0.2.0
 
+    - name: Check tools
+      run: dotnet tool list -g
+
     - name: 📄 Generate Docs
       run: |
         cd src

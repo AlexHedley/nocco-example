@@ -50,7 +50,7 @@ jobs:
       run: |
         cd src
         dotnet tool install --global nocco --version 0.2.0
-        nocco *.cs
+        Nocco *.cs
       
     - name: ⬇️ Commit docs to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4.7.3

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html><head><title>Nocco.cs</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <link href="nocco.css" rel="stylesheet" media="all" type="text/css" />
+    <script src="prettify.js" type="text/javascript"></script></head>
+<body onload="prettyPrint()"><div id="container"><div id="background"></div><table cellpadding="0" cellspacing="0"><thead><tr><th class="docs"><h1>Nocco.cs</h1></th>
+            <th class="code"></th></tr></thead>
+        <tbody><tr id="section_1"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_1">&#xB6;</a></div>
+                    <p><strong>Nocco</strong> is a quick-and-dirty, literate-programming-style documentation
+generator. It is a C# port of <a href="http://jashkenas.github.com/docco/">Docco</a>,
+which was written by <a href="https://github.com/jashkenas">Jeremy Ashkenas</a> in
+Coffescript and runs on node.js.</p>
+
+<p>Nocco produces HTML that displays your comments alongside your code.
+Comments are passed through
+<a href="http://daringfireball.net/projects/markdown/syntax">Markdown</a>, and code is
+highlighted using <a href="http://code.google.com/p/google-code-prettify/">google-code-prettify</a>
+syntax highlighting. This page is the result of running Nocco against its
+own source files.</p>
+
+<p>Currently, to build Nocco, you'll have to have Visual Studio 2010. The project
+depends on <a href="http://code.google.com/p/markdownsharp/">MarkdownSharp</a> and you'll
+have to install <a href="http://www.asp.net/mvc/mvc3">.NET MVC 3</a> to get the
+System.Web.Razor assembly. The MarkdownSharp is a NuGet package that will be
+installed automatically when you build the project.</p>
+
+<p>To use Nocco, run it from the command-line:</p>
+
+<pre><code>nocco *.cs
+</code></pre>
+
+<p>...will generate linked HTML documentation for the named source files, saving
+it into a <code>docs</code> folder.</p>
+
+<p>The <a href="http://github.com/dontangg/nocco">source for Nocco</a> is available on GitHub,
+and released under the MIT license.</p>
+
+<p>If <strong>.NET</strong> doesn't run on your platform, or you'd prefer a more convenient
+package, get <a href="http://rtomayko.github.com/rocco/">Rocco</a>, the Ruby port that's
+available as a gem. If you're writing shell scripts, try
+<a href="http://rtomayko.github.com/shocco/">Shocco</a>, a port for the <strong>POSIX shell</strong>.
+Both are by <a href="http://github.com/rtomayko">Ryan Tomayko</a>. If Python's more
+your speed, take a look at <a href="http://github.com/fitzgen">Nick Fitzgerald</a>'s
+<a href="http://fitzgen.github.com/pycco/">Pycco</a>.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">&#xA;</code></pre></td></tr><tr id="section_2"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_2">&#xB6;</a></div>
+                    <p>Import namespaces to allow us to type shorter type names.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">&#xA;using System.Text;&#xA;using System.Text.RegularExpressions;&#xA;using Microsoft.AspNetCore.Components;&#xA;using Microsoft.AspNetCore.Components.Web;&#xA;using Microsoft.Extensions.DependencyInjection;&#xA;using Microsoft.Extensions.Logging;&#xA;&#xA;using Nocco.Resources;&#xA;&#xA;namespace Nocco;&#xA;&#xA;public class Nocco&#xA;{&#xA;    private static string _executingDirectory;&#xA;    private static List&lt;string&gt; _files;&#xA;    &#xA;</code></pre></td></tr><tr id="section_3"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_3">&#xB6;</a></div>
+                    <h3>Main Documentation Generation Functions</h3>
+</td>
+                <td class="code"><pre><code class="prettyprint">&#xA;</code></pre></td></tr><tr id="section_4"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_4">&#xB6;</a></div>
+                    <p>Generate the documentation for a source file by reading it in, splitting it
+up into comment/code sections, highlighting them for the appropriate language,
+and merging them into an HTML template.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static void GenerateDocumentation(string source) {&#xA;        var lines = File.ReadAllLines(source);&#xA;        var sections = Parse(source, lines);&#xA;        Highlight(sections);&#xA;        GenerateHtml(source, sections);&#xA;    }&#xA;    &#xA;</code></pre></td></tr><tr id="section_5"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_5">&#xB6;</a></div>
+                    <p>Given a string of source code, parse out each comment and the code that
+follows it, and create an individual <code>Section</code> for it.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static List&lt;Section&gt; Parse(string source, string[] lines) {&#xA;        var sections = new List&lt;Section&gt;();&#xA;        var language = GetLanguage(source);&#xA;        var hasCode = false;&#xA;        var docsText = new StringBuilder();&#xA;        var codeText = new StringBuilder();&#xA;&#xA;        Action&lt;string, string&gt; save = (docs, code) =&gt; sections.Add(new Section { DocsHtml = docs, CodeHtml = code });&#xA;        Func&lt;string, string&gt; mapToMarkdown = docs =&gt; {&#xA;            if (language.MarkdownMaps != null)&#xA;                docs = language.MarkdownMaps.Aggregate(docs, (currentDocs, map) =&gt; Regex.Replace(currentDocs, map.Key, map.Value, RegexOptions.Multiline));&#xA;            return docs;&#xA;        };&#xA;&#xA;        foreach (var line in lines) {&#xA;            if (language.CommentMatcher.IsMatch(line) &amp;&amp; !language.CommentFilter.IsMatch(line)) {&#xA;                if (hasCode) {&#xA;                    save(mapToMarkdown(docsText.ToString()), codeText.ToString());&#xA;                    hasCode = false;&#xA;                    docsText = new StringBuilder();&#xA;                    codeText = new StringBuilder();&#xA;                }&#xA;                docsText.AppendLine(language.CommentMatcher.Replace(line, &quot;&quot;));&#xA;            }&#xA;            else {&#xA;                hasCode = true;&#xA;                codeText.AppendLine(line);&#xA;            }&#xA;        }&#xA;        save(mapToMarkdown(docsText.ToString()), codeText.ToString());&#xA;&#xA;        return sections;&#xA;    }&#xA;&#xA;    &#xA;</code></pre></td></tr><tr id="section_6"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_6">&#xB6;</a></div>
+                    <p>Prepares a single chunk of code for HTML output and runs the text of its
+corresponding comment through <strong>Markdown</strong>, using a C# implementation
+called <a href="http://code.google.com/p/markdownsharp/">MarkdownSharp</a>.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static void Highlight(List&lt;Section&gt; sections) {&#xA;        var markdown = new MarkdownSharp.Markdown();&#xA;&#xA;        foreach (var section in sections) {&#xA;            section.DocsHtml = markdown.Transform(section.DocsHtml);&#xA;            section.CodeHtml = section.CodeHtml;&#xA;        }&#xA;    }&#xA;    &#xA;</code></pre></td></tr><tr id="section_7"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_7">&#xB6;</a></div>
+                    <p>Once all of the code is finished highlighting, we can generate the HTML file
+and write out the documentation. Pass the completed sections into the template
+found in <code>Resources/Webpage.cshtml</code></p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static async void GenerateHtml(string source, List&lt;Section&gt; sections)&#xA;    {&#xA;        int depth;&#xA;        var destination = GetDestination(source, out depth);&#xA;&#x9;&#x9;&#x9;&#xA;        string pathToRoot = string.Concat(Enumerable.Repeat(&quot;..&quot; &#x2B; Path.DirectorySeparatorChar, depth));&#xA;&#xA;        IServiceCollection services = new ServiceCollection();&#xA;        services.AddLogging();&#xA;        IServiceProvider serviceProvider = services.BuildServiceProvider();&#xA;        ILoggerFactory loggerFactory = serviceProvider.GetRequiredService&lt;ILoggerFactory&gt;();&#xA;        await using var htmlRenderer = new HtmlRenderer(serviceProvider, loggerFactory);&#xA;&#xA;        var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =&gt;&#xA;        {&#xA;            Func&lt;string, string&gt; getSourcePath = s =&gt;&#xA;                Path.Combine(pathToRoot, Path.ChangeExtension(s.ToLower(), &quot;.html&quot;).Substring(2)).Replace(&#x27;\\&#x27;, &#x27;/&#x27;);&#xA;            var dictionary = new Dictionary&lt;string, object?&gt;&#xA;            {&#xA;                { &quot;Title&quot;, Path.GetFileName(source) },&#xA;                { &quot;PathToCss&quot;, Path.Combine(pathToRoot, &quot;nocco.css&quot;).Replace(&#x27;\\&#x27;, &#x27;/&#x27;) },&#xA;                { &quot;PathToJs&quot;, Path.Combine(pathToRoot, &quot;prettify.js&quot;).Replace(&#x27;\\&#x27;, &#x27;/&#x27;) },&#xA;                { &quot;GetSourcePath&quot;, getSourcePath },&#xA;                { &quot;Sections&quot;, sections },&#xA;                { &quot;Sources&quot;, _files },&#xA;            };&#xA;&#xA;            var parameters = ParameterView.FromDictionary(dictionary);&#xA;            var output = await htmlRenderer.RenderComponentAsync&lt;Webpage&gt;(parameters);&#xA;&#xA;            return output.ToHtmlString();&#xA;        });&#xA;        &#xA;        File.WriteAllText(destination, html);&#xA;    }&#xA;&#xA;</code></pre></td></tr><tr id="section_8"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_8">&#xB6;</a></div>
+                    <p>A list of the languages that Nocco supports, mapping the file extension to
+the symbol that indicates a comment. To add another language to Nocco's
+repertoire, add it here.</p>
+
+<p>You can also specify a list of regular expression patterns and replacements. This
+translates things like
+<a href="http://msdn.microsoft.com/en-us/library/b2s063f7.aspx">XML documentation comments</a> into Markdown.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static Dictionary&lt;string, Language&gt; Languages = new Dictionary&lt;string, Language&gt; {&#xA;        { &quot;.sql&quot;, new Language {&#xA;            Name = &quot;sql&quot;,&#xA;            Symbol = &quot;--&quot;,&#xA;        }},&#xA;        { &quot;.js&quot;, new Language {&#xA;            Name = &quot;javascript&quot;,&#xA;            Symbol = &quot;//&quot;,&#xA;            Ignores = new List&lt;string&gt; {&#xA;                &quot;min.js&quot;&#xA;            }&#xA;        }},&#xA;        { &quot;.cs&quot;, new Language {&#xA;            Name = &quot;csharp&quot;,&#xA;            Symbol = &quot;///?&quot;,&#xA;            Ignores = new List&lt;string&gt; {&#xA;                &quot;Designer.cs&quot;&#xA;            },&#xA;            MarkdownMaps = new Dictionary&lt;string, string&gt; {&#xA;                { @&quot;&lt;c&gt;([^&lt;]*)&lt;/c&gt;&quot;, &quot;`$1`&quot; },&#xA;                { @&quot;&lt;param[^\&gt;]*name=&quot;&quot;([^&quot;&quot;]*)&quot;&quot;[^\&gt;]*&gt;([^&lt;]*)&lt;/param&gt;&quot;, &quot;**argument** *$1*: $2&quot; &#x2B; Environment.NewLine },&#xA;                { @&quot;&lt;returns&gt;([^&lt;]*)&lt;/returns&gt;&quot;, &quot;**returns**: $1&quot; &#x2B; Environment.NewLine },&#xA;                { @&quot;&lt;see\s*cref=&quot;&quot;([^&quot;&quot;]*)&quot;&quot;\s*/&gt;&quot;, &quot;see `$1`&quot;},&#xA;                { @&quot;(&lt;/?example&gt;|&lt;/?summary&gt;|&lt;/?remarks&gt;)&quot;, &quot;&quot; },&#xA;            }&#xA;        }},&#xA;        { &quot;.vb&quot;, new Language {&#xA;            Name = &quot;vb.net&quot;,&#xA;            Symbol = &quot;&#x27;&#x2B;&quot;,&#xA;            Ignores = new List&lt;string&gt; {&#xA;                &quot;Designer.vb&quot;&#xA;            },&#xA;            MarkdownMaps = new Dictionary&lt;string, string&gt; {&#xA;                { @&quot;&lt;c&gt;([^&lt;]*)&lt;/c&gt;&quot;, &quot;`$1`&quot; },&#xA;                { @&quot;&lt;param[^\&gt;]*&gt;([^&lt;]*)&lt;/param&gt;&quot;, &quot;&quot; },&#xA;                { @&quot;&lt;returns&gt;([^&lt;]*)&lt;/returns&gt;&quot;, &quot;&quot; },&#xA;                { @&quot;&lt;see\s*cref=&quot;&quot;([^&quot;&quot;]*)&quot;&quot;\s*/&gt;&quot;, &quot;see `$1`&quot;},&#xA;                { @&quot;(&lt;/?example&gt;|&lt;/?summary&gt;|&lt;/?remarks&gt;)&quot;, &quot;&quot; },&#xA;            }&#xA;        }}&#xA;    };&#xA;    &#xA;</code></pre></td></tr><tr id="section_9"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_9">&#xB6;</a></div>
+                    <p>Get the current language we're documenting, based on the extension.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static Language GetLanguage(string source) {&#xA;        var extension = Path.GetExtension(source);&#xA;        return Languages.ContainsKey(extension) ? Languages[extension] : null;&#xA;    }&#xA;    &#xA;</code></pre></td></tr><tr id="section_10"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_10">&#xB6;</a></div>
+                    <p>Compute the destination HTML path for an input source file path. If the source
+is <code>Example.cs</code>, the HTML will be at <code>docs/example.html</code></p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    private static string GetDestination(string filepath, out int depth) {&#xA;        var dirs = Path.GetDirectoryName(filepath).Substring(1).Split(new[] { Path.DirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);&#xA;        depth = dirs.Length;&#xA;&#xA;        var dest = Path.Combine(&quot;docs&quot;, string.Join(Path.DirectorySeparatorChar.ToString(), dirs)).ToLower();&#xA;        Directory.CreateDirectory(dest);&#xA;&#xA;        return Path.Combine(&quot;docs&quot;, Path.ChangeExtension(filepath, &quot;html&quot;).ToLower());&#xA;    }&#xA;    &#xA;</code></pre></td></tr><tr id="section_11"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_11">&#xB6;</a></div>
+                    <p>Find all the files that match the pattern(s) passed in as arguments and
+generate documentation for each one.</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">    public static void Generate(string[] targets)&#xA;    {&#xA;        if (targets.Length &gt; 0) {&#xA;            Directory.CreateDirectory(&quot;docs&quot;);&#xA;&#xA;            _executingDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);&#xA;            File.Copy(Path.Combine(_executingDirectory, &quot;Resources&quot;, &quot;Nocco.css&quot;), Path.Combine(&quot;docs&quot;, &quot;nocco.css&quot;), true);&#xA;            File.Copy(Path.Combine(_executingDirectory, &quot;Resources&quot;, &quot;prettify.js&quot;), Path.Combine(&quot;docs&quot;, &quot;prettify.js&quot;), true);&#xA;            &#xA;            _files = new List&lt;string&gt;();&#xA;            foreach (var target in targets) {&#xA;                _files.AddRange(Directory.GetFiles(&quot;.&quot;, target, SearchOption.AllDirectories).Where(filename =&gt; {&#xA;                    var language = GetLanguage(Path.GetFileName(filename)) ;&#xA;&#xA;                    if (language == null)&#xA;                        return false;&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#xA;</code></pre></td></tr><tr id="section_12"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_12">&#xB6;</a></div>
+                    <p>Check if the file extension should be ignored</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">                    if (language.Ignores != null &amp;&amp; language.Ignores.Any(ignore =&gt; filename.EndsWith(ignore)))&#xA;                        return false;&#xA;&#xA;</code></pre></td></tr><tr id="section_13"><td class="docs"><div class="pilwrap"><a class="pilcrow" href="#section_13">&#xB6;</a></div>
+                    <p>Don't include certain directories</p>
+</td>
+                <td class="code"><pre><code class="prettyprint">                    var foldersToExclude = new string[] { @&quot;\docs&quot;, @&quot;\bin&quot;, @&quot;\obj&quot; };&#xA;                    if (foldersToExclude.Any(folder =&gt; Path.GetDirectoryName(filename).Contains(folder)))&#xA;                        return false;&#xA;&#xA;                    return true;&#xA;                }));&#xA;            }&#xA;&#xA;            Console.WriteLine(_files.Count &#x2B; &quot; file(s) found.&quot;);&#xA;            foreach (var file in _files)&#xA;                GenerateDocumentation(file);&#xA;        }&#xA;    }&#xA;    &#xA;}&#xA;</code></pre></td></tr></tbody></table></div></body></html>

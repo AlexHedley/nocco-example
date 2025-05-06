@@ -40,8 +40,8 @@ jobs:
       with:
         dotnet-version: '9.0.x'
     
-    - name: ⬇️ Install nocco
-      run: dotnet tool install --global nocco --version 0.2.0
+    # - name: ⬇️ Install nocco
+    #   run: dotnet tool install --global nocco --version 0.2.0
 
     - name: Check tools
       run: dotnet tool list -g
@@ -49,6 +49,7 @@ jobs:
     - name: 📄 Generate Docs
       run: |
         cd src
+        dotnet tool install --global nocco --version 0.2.0
         nocco *.cs
       
     - name: ⬇️ Commit docs to GitHub Pages

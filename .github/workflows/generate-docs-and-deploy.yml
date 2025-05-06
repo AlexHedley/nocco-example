@@ -41,7 +41,7 @@ jobs:
         dotnet-version: '9.0.x'
     
     - name: ⬇️ Install nocco
-      run: dotnet install -g nocco
+      run: dotnet tool install --global nocco --version 0.2.0
 
     - name: 📄 Generate Docs
       run: |

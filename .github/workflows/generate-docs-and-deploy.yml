@@ -1,0 +1,56 @@
+name: 📄 Generate Docs and 🚀 Deploy to GitHub Pages
+
+# Run workflow on every push to the master branch
+on:
+  workflow_dispatch:
+#   push:
+#     branches: [ main, dev ]
+#     paths: src/**
+#   pull_request:
+#     branches: [ main ]
+#     paths: src/**
+  # Only trigger, when the build workflow succeeded
+#   workflow_run:
+#     workflows: ["Build / Test (with Reports)"]
+#     types:
+#       - completed
+
+# permissions:
+#   contents: read
+#   issues: read
+#   checks: write
+#   pull-requests: write
+#   pages: write
+#   id-token: write
+
+jobs:
+  deploy-to-github-pages:
+    runs-on: ubuntu-latest
+    
+#     defaults:
+#       run:
+#         working-directory: src
+    
+    steps:
+    - name: 🛎️ Checkout
+      uses: actions/checkout@v4
+    
+    - name: ⚙️ Setup .NET 9.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: ⬇️ Install nocco
+      run: dotnet install -g nocco
+
+    - name: 📄 Generate Docs
+      run: |
+        cd src
+        nocco *.cs
+      
+    - name: ⬇️ Commit docs to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4.7.3
+      with:
+        branch: gh-pages
+        folder: src/docs
+        # target-folder: app
